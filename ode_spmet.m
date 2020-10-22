@@ -20,7 +20,7 @@ p.Ds_n = p.Ds_n0 * exp(p.E.Dsn/p.R*(1/p.T_ref - 1/T1));
 p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/T1));
 
 % Matrices for solid-phase Li concentration
-[A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs1(p);
+[A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
 
 % Calculation of the surface concentration
 c_ss_p= C_p*U_p + D_p.*J_p;
