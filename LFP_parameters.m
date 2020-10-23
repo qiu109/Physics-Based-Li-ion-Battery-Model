@@ -24,6 +24,7 @@ p.epsilon_e_p = 0.633;      % Volume fraction in electrolyte for pos. electrode
 
 p.epsilon_e_filler_p = 0.0535;      % Filler volume fraction in electrolyte for pos. electrode
 p.epsilon_e_filler_n = 0.0326;      % Filler Volume fraction in electrolyte for neg. electrode
+
 % Specific interfacial surface area
 
 p.a_p = (3*p.eps_s_p)/p.R_p;  % Positive electrode [m^2/m^3]
@@ -41,16 +42,14 @@ p.Ds_p0 = 1.18e-18;  % Diffusion coeff for solid in pos. electrode, [m^2/s]
 p.Ds_n0 = 2e-14;    % Diffusion coeff for solid in neg. electrode, [m^2/s]
 
 p.Faraday = 96485.33289;      % Faraday's constant, [Coulumbs/mol]
-p.t_plus = 0.5;             % Transference number
+p.t_plus = 0.5;               % Transference number
 p.brug = 1.5;                 % Bruggeman porosity
 
-p.De_s=(9e-15);             % Diffusion coeff for solid in sep, [m^2/s]
-p.De_p=(10e-12);             % Diffusion coeff for solid in pos, [m^2/s]
-p.De_n=(10e-12);             % Diffusion coeff for solid in neg, [m^2/s]
+p.De0_s=(9e-15);              % Diffusion coeff for solid in sep, [m^2/s]
+p.De0_p=(10e-12);             % Diffusion coeff for solid in pos, [m^2/s]
+p.De0_n=(10e-12);             % Diffusion coeff for solid in neg, [m^2/s]
 
-p.D_en_eff = p.De_n * p.epsilon_e_n^(p.brug-1);
-p.D_es_eff = p.De_s * p.epsilon_e_s^(p.brug-1);
-p.D_ep_eff = p.De_p * p.epsilon_e_p^(p.brug-1);
+
 
 %% Kinetic Params
 
@@ -76,16 +75,14 @@ p.theta_p_max=0.76;           % Max soc of the positive electrode
 
 %% Thermodynamic Properties
 
-
-p.T_ref = 298.15;       % [K]
-p.T_amb= 263.15;
+p.T_amb= 298.15; 
 
 p.Cp=1100; %Heat capacity [Jkg^-1K^-1]   
 p.Cc=62.7; %Heat capacity J/K (core) 
 p.Cs=4.5; %Heat capacity J/K (surface)   
-p.Rc=1.94;  % equiv. conduction resistance between core and surface
-p.Ru=3.19;  % equiv. conduction resistance around the cell
-p.h=10; % 5-10 for free convection air cooling %10-70 for forced air cooling
+p.Rc=1.83;  % equiv. conduction resistance between core and surface
+p.Ru=3.3;  % equiv. conduction resistance around the cell Ru=1/(h*A)
+p.h=47.7966; % 5-10 for free convection air cooling %10-70 for forced air cooling
 p.A=6.34e-3; %Cell area
 p.M= 0.07;  % Cell mass [kg]
 
@@ -100,12 +97,12 @@ p.h2a = 3.19;  % [W/K]
 % Activation Energies,[J/mol]
 % Taken from Prada et al (2012)
 % https://doi.org/10.1149/2.064209jes
-
+p.T_ref =298.15;       % [K]
 p.E.Dsn = 35e3;
 p.E.Dsp = 35e3;
 p.E.De = 26600;
-p.E.kappa_e = 11e3;
-
+p.E.kappa_e = 34.70e3;
+p.E.De_s = 37.04e3;
 % Taken from Ye, Y., Shi, Y., & Tay, A. A. O. (2012).
 % https://doi.org/10.1016/j.jpowsour.2012.06.055
 
@@ -115,4 +112,17 @@ p.E.kp= 30000;
 
 %% Aging submodel parameters
 
-p.kappa_P = 1;      % [S/m] conductivity of side rxn product
+p.kappa_s = 5e-6;  %1;     % [S/m] conductivity of side rxn product
+p.ksei= 2.75e-13;    % [m/s^-1] neg.side kinetic rate of side rxn product adopted from Howey
+p.ksei_n= 4.86e-10;  % [mol/m^2s] Apperant kinetic rate of side rxn product adopted from Safari
+p.ksei_p= 1.24e-19;  % [mol/m^2s] Apperant kinetic rate of side rxn product adopted from Safari
+p.Dsei= 1.125e-14;   % [m^2/s^-1] Diffusion rate of side rxn product adopted from Howey
+p.Msei= 0.162;       % [kg/mol] molecular weight of side rxn product adopted from Delecourt
+p.rhos= 1690;        % [kg/m^3] mass density of side rxn product
+p.Us= 0.4;           % [V] reference potential of side rxn
+p.alphasei_n=0.38;    % Charge transfer coeff. of the negative side adopted from Safari
+p.alphasei_p=0.11;   % Charge transfer coeff. of the positive side adopted from Safari
+p.L_sei=1e-9;        % [m^2] Initialt thickness of the SEI layer
+p.Rsei_n = 1e-3;      % [Ohms*m^2] Resistivity of SEI layer, 
+p.Rsei_p=0;
+p.R_s_sei = 0;       % [Ohms*m^2] Resistivity of SEI layer, 
