@@ -15,8 +15,8 @@ close all;
 clc;
 
 run LFP_parameters
- load('dUdT.mat');
- load('SOC_ent.mat');
+load('dUdT.mat');
+load('SOC_ent.mat');
 
 %% Finite difference for spherical particle and electrolyte
 p.Np=50;
@@ -38,12 +38,12 @@ p.Del_xp = p.L_p * p.dx_p;
 
 % Fixed current controlled by C-rate
 
-        p.C=1; 
+        p.C=1;   p.Nc=1;
         t_end=3600./p.C;
         t = 0:1:t_end;
         NT=length(t);
         I=p.C.*p.cell_Ah.*ones(size(t)); 
-
+        
 % Dynamic current input
 
 %         load('UDDS_SCOTT.mat');
@@ -53,8 +53,8 @@ p.Del_xp = p.L_p * p.dx_p;
 %         NT=length(t);
  
 %         load('crnt.mat');
-%         I = current'.*5;
-%         C = I./2.3;
+%         I = current';
+%         p.C = I./2.3;
 %         t =0:1:1369;
 %         NT=length(t);
 
@@ -70,20 +70,26 @@ T10 = p.T_amb;
 T20 = p.T_amb;
 T0  = p.T_amb;
 
+% SEI
+delta_sei0=0;
+eps=0.58;
+
 %% Calculation of concentration of solid particles and temperature distribution
 
-x0 = [Un0; Up0; Ue0;T10;T20;T0];
+x0 = [Un0; Up0; Ue0;T10;T20;T0;delta_sei0;eps];
 data.time = t;
 data.cur = I;
-Opt1= odeset('Events', @ode_cont1);
-[t,x] = ode23s(@(t,x) ode_spmet(t,x,data,p),t,x0,Opt1);
+Opt1= odeset('Events', @(t, U_n)ode_cont1(t, U_n,p));
+[t,x] = ode23s(@(t,x) ode_spmet_degr(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
 
 U_n = x(:,1:(p.Nn-1));
 U_p = x(:,p.Nn : 2*(p.Nn-1));
 U_e = x(:,2*p.Nn-1 : 2*p.Nn-1+p.Nx-4);
-T1 = x(:,end-2);
-T2 = x(:,end-1);
-T  = x(:,end);
+T1 = x(:,end-4);
+T2 = x(:,end-3);
+T  = x(:,end-2);
+delta_sei= x(:,end-1);
+eps=x(:,end);
 
 %% Calculation of SOC of the cell based on concentrations of the electrodes
 cn_avg= mean(U_n'); cp_avg= mean(U_p');
@@ -100,13 +106,32 @@ NT = length(t);
 theta_p = zeros(NT,1);
 theta_n = zeros(NT,1);
 Uref_n  = zeros(NT,1);
-V       = zeros(NT,1);
-V_ocv   = zeros(NT,1);
-V_spm   = zeros(NT,1);
+% V       = zeros(NT,1);
+% V_ocv   = zeros(NT,1);
+% V_spm   = zeros(NT,1);
 
 for k=1:NT
     
-[~,theta_p(k),theta_n(k),Uref_n(k),V(k),V_ocv(k),V_spm(k),...
-    Qgen(k),Qohmic(k),Qentropic(k),Qreaction(k),dUndT(k),dUpdT(k)]=ode_spmet(t(k),x(k,:)',data,p);
+[~,theta_p(k),theta_n(k),V(k),V_spm(k),V_ocv(k),c_ss_p(k),...
+    R_tot_n(k),Qgen(k),jn(k),Q_n(k),Qohmic(k),Qreaction(k),Qloss(k),dudT(k),c_ss_n(k), ...
+    p.Ds_n(k),p.De_n(k),p.k_n(k),eta_n(k),kap_n(k),dfca_n(k),V_electrolytePolar(k),V_electrolyteCond(k)...
+    ]...
+    =ode_spmet_degr(t(k),x(k,:)',data,p,dUdt,SOC_ent);
+
 end
 
+% figure
+% plot(t,V_ocv,t,V_spm,t,V);xlabel('time');ylabel('V');
+% % legend('V_{ocv}','V_{spm}','V_{spme}');
+% % figure
+% % plot(t,Qgen);xlabel('time');ylabel('Heat Generation, W');
+% % figure
+% % plot(t,T1-273,t,T2-273);xlabel('time');ylabel('Temperature, C^{o}');
+% % legend('Core Temp.','Surface Temp.');
+% % figure
+% % plot(t,T-273);xlabel('time');ylabel('Lumped Temperature, C^{o}');
+% % figure
+% % plot(t,socn);xlabel('time');ylabel('SOC of the cell');
+% % figure
+% % plot(capacity,V_ocv,capacity,V_spm,capacity,V); xlabel('Capacity Ah'); ylabel('V');
+% % legend('V_{ocv}','V_{spm}','V_{spme}');
