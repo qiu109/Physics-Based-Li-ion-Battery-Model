@@ -80,7 +80,7 @@ x0 = [Un0; Up0; Ue0;T10;T20;T0;delta_sei0;eps];
 data.time = t;
 data.cur = I;
 Opt1= odeset('Events', @(t, U_n)ode_cont1(t, U_n,p));
-[t,x] = ode23s(@(t,x) ode_spmet_degr(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
+[t,x] = ode23s(@(t,x) ode_spmet(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
 
 U_n = x(:,1:(p.Nn-1));
 U_p = x(:,p.Nn : 2*(p.Nn-1));
@@ -116,7 +116,7 @@ for k=1:NT
     R_tot_n(k),Qgen(k),jn(k),Q_n(k),Qohmic(k),Qreaction(k),Qloss(k),dudT(k),c_ss_n(k), ...
     p.Ds_n(k),p.De_n(k),p.k_n(k),eta_n(k),kap_n(k),dfca_n(k),V_electrolytePolar(k),V_electrolyteCond(k)...
     ]...
-    =ode_spmet_degr(t(k),x(k,:)',data,p,dUdt,SOC_ent);
+    =ode_spmet(t(k),x(k,:)',data,p,dUdt,SOC_ent);
 
 end
 
