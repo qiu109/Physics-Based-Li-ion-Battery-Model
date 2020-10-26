@@ -9,6 +9,7 @@ T  = x(end-2);
 delta_sei = x(end-1);
 eps=x(end);
 
+
 cur=interp1(data.time,data.cur,t,[]);
 
 TEMP=T;
@@ -138,7 +139,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      %% Degredation   
      
         % Exchange Current density of SEI 
-        i0_sei_n= -p.Faraday*p.ksei*0.01;
+        i0_sei_n= -p.Faraday*p.ksei*0.0001;
         i0_sei_p= p.Faraday*p.ksei_p;
         
         % Overpotential of the SEI
@@ -163,7 +164,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
            
         %% Solid particle concentration after SEI layer formation
         c_p = A_p*U_p + B_p.*J_p;
-        c_n = A_n*U_n + B_n.*jn;        
+        c_n = A_n*U_n + B_n.*J_n;        % Write jn interms of J_n to see SEI effect and change the coeff. in line 142 to see the effect.
         
         %% State-of-Charge (Bulk)
         r_vec = (0:1/p.Nn:1)';
@@ -204,4 +205,4 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     varargout{4} = V_spm;
     varargout{5} = V_ocv;
     
-    end
+end
