@@ -3,13 +3,15 @@ function [xdot,varargout]=ode_spmet(t,x,data,p,dUdt,SOC_ent)
 U_n = x(1:(p.Nn-1));
 U_p = x(p.Nn : 2*(p.Nn-1));
 U_e = x(2*p.Nn-1 : 2*p.Nn-1+p.Nx-4);
-T1 = x(end-2);
-T2 = x(end-1);
-T  = x(end);
+T1 = x(end-4);
+T2 = x(end-3);
+T  = x(end-2);
+delta_sei = x(end-1);
+eps=x(end);
 
 cur=interp1(data.time,data.cur,t,[]);
-TEMP=T;
 
+TEMP=T;
 %% Solid phase dynamics
 
 % Molar flux for solid phase
@@ -18,7 +20,7 @@ J_n=(cur./p.Area_n)./(p.Faraday*p.a_n*p.L_n);
 
 % Solid phase diffusivity temperature dependence
 p.Ds_n = p.Ds_n0 * exp(p.E.Dsn/p.R*(1/p.T_ref - 1/TEMP));
-p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/TEMP));
+p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/TEMP)) ;
 
 % Matrices for solid-phase Li concentration
 [A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
@@ -28,7 +30,6 @@ c_ss_p= C_p*U_p + D_p.*J_p;
 c_ss_n= C_n*U_n + D_n.*J_n;
 
 %% Electrolyte phase dynamics
-
 % Electrolyte phase diffusivity temperature dependence
 p.De_n=p.De0_n*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
 p.De_p=p.De0_p*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
@@ -38,7 +39,7 @@ p.D_en_eff = p.De_n * p.epsilon_e_n^(p.brug-1);
 p.D_es_eff = p.De_s * p.epsilon_e_s^(p.brug-1);
 p.D_ep_eff = p.De_p * p.epsilon_e_p^(p.brug-1);
 
-% Molar flux for solid phase
+% Molar flux for electrolyte phase
 Jn=cur.*(1-p.t_plus )/(p.epsilon_e_n*p.Area_n*p.Faraday*p.L_n);
 Jp=-cur.*(1-p.t_plus )/(p.epsilon_e_p*p.Area_p*p.Faraday*p.L_p);
 
@@ -65,23 +66,28 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
  
 %% Calculation of potential of the cell
 
-   % SOC of the electrodes  
+    % SOC of the electrodes  
      [theta_p,theta_n]=getsoc(c_ss_p,c_ss_n,p);
      
+    % Solid phase diffusivity concentration dependence  
+     p.Ds_pp = 1.18e-18 ./ (1 + theta_p).^1.6 ;
+     p.Ds_nn = 2e-14 ./ (1 + theta_n).^1.6 ;
+
     % OCP of the electrodes
      [Uref_p,dUpdT]=refpotantial_p (theta_p);
      [Uref_n,dUndT]=refpotantial_n (theta_n);
-   
-    % OCV of the cell
-    
-    V_ocv = Uref_p - Uref_n;
+     dudT= interp1(SOC_ent,dUdt,theta_n,'linear','extrap');
      
-     % Kinetic reaction rate, adjusted for Arrhenius temperature dependence
+    % OCV of the cell
+     V_ocv = Uref_p - Uref_n;
+     
+    % Kinetic reaction rate, adjusted for Arrhenius temperature dependence
      
      p.k_n = p.k_n0 * exp(p.E.kn/p.R*(1/p.T_ref - 1/TEMP)); 
      p.k_p = p.k_p0 * exp(p.E.kp/p.R*(1/p.T_ref - 1/TEMP)); 
      
     % Exchange current density
+   
      i_0n = p.k_n .* ((p.c_s_n_max - c_ss_n) .* c_ss_n .* p.ce).^p.alph;
      i_0p = p.k_p .* ((p.c_s_p_max - c_ss_p) .* c_ss_p .* p.ce).^p.alph;
    
@@ -89,7 +95,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      RTaF=(p.R*TEMP)./(p.alph*p.Faraday);
      eta_n  = RTaF .* asinh(cur ./ (2.*p.a_n.*p.Area_n.*p.L_n.*i_0n));
      eta_p  = RTaF .* asinh(-cur ./ (2.*p.a_p.*p.Area_p.*p.L_p.*i_0p));
-     
+    
     % SPM Voltage
      V_spm= eta_p - eta_n + Uref_p - Uref_n;
      
@@ -112,7 +118,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      dfca_n = electrolyteAct(cen_bar,TEMP,p);
      dfca_s = electrolyteAct(ces_bar,TEMP,p);
      dfca_p = electrolyteAct(cep_bar,TEMP,p);
-
+     
     % Overpotential due to electrolyte conductivity
      V_electrolyteCond = (p.L_n./(2.*kap_n_eff) + 2*p.L_s./(2.*kap_s_eff)...
                           + p.L_p./(2.*kap_p_eff)).*cur;
@@ -123,13 +129,13 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      V_electrolytePolar = (2*p.R*TEMP)/(p.Faraday) .* (1-p.t_plus).* ...
         ( (1+dfca_n) .* (log(cens) - log(ce0n)) ...
          +(1+dfca_s) .* (log(cesp) - log(cens)) ...
-         +(1+dfca_p) .* (log(ce0p) - log(cesp))); 
+         +(1+dfca_p) .* (log(ce0p) - log(cesp)));  
      
-    % Overall cell voltage
-     V = V_spm + V_electrolyteCond + V_electrolytePolar + ...
-     (p.Rsei_p/(p.a_p*p.L_p) + p.Rsei_n/(p.a_n*p.L_n) )*cur;
+             %% Overall cell voltage
+        V = V_spm + V_electrolyteCond + V_electrolytePolar + (p.Rsei_p/(p.a_p*p.L_p) + p.Rsei_n/(p.a_n*p.L_n) )*cur;
 
-    %% Degredation   
+
+     %% Degredation   
      
         % Exchange Current density of SEI 
         i0_sei_n= -p.Faraday*p.ksei*0.01;
@@ -166,10 +172,9 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
         SOC_n = 3/p.c_s_n_max * trapz(r_vec,r_vec.^2.*c_s_n);
         SOC_p = 3/p.c_s_p_max * trapz(r_vec,r_vec.^2.*c_s_p);
         
-       %% Heat generation  
+    %% Heat generation  
       Qohmic =  -cur.*(V - V_ocv);
-      Qreaction=   cur.*(eta_n - eta_p) ;     
-      dudT= interp1(SOC_ent,dUdt,theta_n,'linear','extrap');
+      Qreaction=   cur.*(eta_n - eta_p) ;             
       Qentropic=  cur*TEMP*(dudT)./1000;       %cur*TEMP*(dUpdT-dUndT)./1000  %cur*TEMP*(dudT)./1000
       Qgen= Qohmic + Qreaction + Qentropic;
       
@@ -183,17 +188,12 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      % Lumped Temperature calculation
      T_dot= (Qgen  - Qremv)./(p.M*p.Cp);
      
- %% Capacity Calculations  
+     
+    %% Capacity Calculations  
     
     Q_n= (p.Area_n*p.L_n*p.Faraday*eps*p.c_s_n_max*p.theta_n_max)./3600; %Ah
     Q_p= (p.Area_p*p.L_p*p.Faraday*p.eps_s_p*p.c_s_p_max*p.theta_p_max)./3600; %Ah
     
-    % Capacity loss based on temp. and cycle numb. 
-    Ah=p.Nc*(1-SOC_n)*Q_n;
-    B=10000*(15/p.C)^(1/3);
-    Qloss=B*exp( (-31700 + 370.3*p.C)/(p.R*TEMP) )*Ah^0.552;
-   
-    Qrem=(1-Qloss)*100; %???
     
      %% Outputs
     xdot = [c_n; c_p; c_e; T1_dot; T2_dot; T_dot; delta_sei_dot;eps_dot]; 
@@ -203,22 +203,5 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     varargout{3} = V;
     varargout{4} = V_spm;
     varargout{5} = V_ocv;
-    varargout{6} = c_ss_p;
-    varargout{7} = R_tot_n;
-    varargout{8} = Qgen;
-    varargout{9} = jn;
-    varargout{10} =Q_n;
-    varargout{11} =Qohmic;
-    varargout{12} =Qreaction;
-    varargout{13} =Qloss;
-    varargout{14} =dudT;
-    varargout{15} =c_ss_n;
-    varargout{16} =p.Ds_n;
-    varargout{17} =p.De_n;
-    varargout{18} =p.k_n;
-    varargout{19} =eta_n;
-    varargout{20} =kap_n;
-    varargout{21} =dfca_n;
-    varargout{22} =V_electrolytePolar;
-    varargout{23} =V_electrolyteCond;
-end
+    
+    end
