@@ -21,8 +21,8 @@ p.Del_xp = p.L_p * p.dx_p;
 
 % Initial concentration  of solid particles and electrolyte 
 
-Up0(1:p.Np-1,1)=Upi;             %p.c_s_p_max*p.theta_p_min
-Un0(1:p.Nn-1,1)=Uni;             %p.c_s_n_max*p.theta_n_max
+Up0=Upi*ones(p.Np-1,1);             %p.c_s_p_max*p.theta_p_min
+Un0=Uni*ones(p.Nn-1,1);             %p.c_s_n_max*p.theta_n_max
 Ue0=1500.*ones(p.Nx-3,1);
 
 % Temperature
@@ -40,7 +40,7 @@ x0 = [Un0; Up0; Ue0;T10;T20;T0;delta_sei0;eps];
 data.time = t;
 data.cur = I;
 Opt1= odeset('Events', @(t, U_n)ode_cont1(t, U_n,p));
-[t,x] = ode23s(@(t,x) ode_spmet(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
+[t,x] = ode23s(@(t,x) ode_spmet_degr_cycle(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
 
 U_n = x(:,1:(p.Nn-1));
 U_p = x(:,p.Nn : 2*(p.Nn-1));
@@ -73,9 +73,9 @@ NT=length(t);
 for k=1:NT
     
 [~,theta_p(k),theta_n(k),V(k),V_spm(k),V_ocv(k),...
-    R_tot_n(k),eps(k),delta_sei(k)...
+    R_tot_n(k),eps(k),delta_sei(k),c_ss_n(k)...
     ]...
-    =ode_spmet(t(k),x(k,:)',data,p,dUdt,SOC_ent);
+    =ode_spmet_degr_cycle(t(k),x(k,:)',data,p,dUdt,SOC_ent);
 
 end
 
@@ -86,4 +86,6 @@ varargout{4} = delta_sei;
 varargout{5} = V;
 varargout{6} = R_tot_n;
 varargout{7} = theta_n;
+varargout{8} = c_ss_n;
+
 end
