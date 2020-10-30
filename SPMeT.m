@@ -1,4 +1,4 @@
-function [varargout]= spmet(p,t,I,Uni,Upi,deltasei0,eps0)
+function [varargout]= spmet(p,t,I,Uni,Upi,deltasei0,eps0,Ti)
 
 load('dUdT.mat');
 load('SOC_ent.mat');
@@ -28,7 +28,7 @@ Ue0=1500.*ones(p.Nx-3,1);
 % Temperature
 T10 = p.T_amb;
 T20 = p.T_amb;
-T0  = p.T_amb;
+T0  = Ti;
 
 % SEI
 delta_sei0=deltasei0;                    %0
@@ -73,7 +73,7 @@ NT=length(t);
 for k=1:NT
     
 [~,theta_p(k),theta_n(k),V(k),V_spm(k),V_ocv(k),...
-    R_tot_n(k),eps(k),delta_sei(k),c_ss_n(k)...
+    R_tot_n(k),eps(k),delta_sei(k),c_ss_n(k),p.Ds_n,D_n...
     ]...
     =ode_spmet_degr_cycle(t(k),x(k,:)',data,p,dUdt,SOC_ent);
 
@@ -87,5 +87,7 @@ varargout{5} = V;
 varargout{6} = R_tot_n;
 varargout{7} = theta_n;
 varargout{8} = c_ss_n;
-
+varargout{9} = p.Ds_n;
+varargout{10} = D_n;
+varargout{11} = T;
 end
