@@ -7,15 +7,16 @@ load('dUdT.mat');
 load('SOC_ent.mat');
 
 %% Initial Conditions
-
-    Upi=p.c_s_p_max*p.theta_p_min;
-    Uni=p.c_s_n_max*p.theta_n_max;
+p.Np=50;
+p.Nn=50;
+    Upi=p.c_s_p_max*p.theta_p_min*ones(p.Np-1,1);
+    Uni=p.c_s_n_max*p.theta_n_max*ones(p.Nn-1,1);
     deltasei0=0;
     eps0=0.58;
     Ti=298.15;
 % Fixed current controlled by C-rate
  
-        p.C=1;   p.Nc=2;
+        p.C=1;   p.Nc=4;
         t_end=3599;
         t = 0:1:t_end;
         NT=length(t);
@@ -63,9 +64,10 @@ for k=1:p.Nc
     Ds_n(k,:)=D_n;
     l_T(k,:)=T;
     
-    
-    Uni=U_n(end);
-    Upi=U_p(end);
+    Q_n(k,:)= (p.Area_n*p.L_n*p.Faraday*eps*p.c_s_n_max*max(theta_n))./3600;
+     
+    Uni=U_n(end,:)';
+    Upi=U_p(end,:)';
     deltasei0=delta_sei(end);
     eps0=eps(end);
     Ti=T(end);
