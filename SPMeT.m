@@ -4,8 +4,7 @@ load('dUdT.mat');
 load('SOC_ent.mat');
 
 %% Finite difference for spherical particle and electrolyte
-p.Np=50;
-p.Nn=50;
+
 
 p.delta_p =  p.R_p/(p.Np);
 p.delta_n =  p.R_n/(p.Nn);  
@@ -21,8 +20,8 @@ p.Del_xp = p.L_p * p.dx_p;
 
 % Initial concentration  of solid particles and electrolyte 
 
-Up0=Upi*ones(p.Np-1,1);             %p.c_s_p_max*p.theta_p_min
-Un0=Uni*ones(p.Nn-1,1);             %p.c_s_n_max*p.theta_n_max
+Up0=Upi;             %p.c_s_p_max*p.theta_p_min
+Un0=Uni;             %p.c_s_n_max*p.theta_n_max
 Ue0=1500.*ones(p.Nx-3,1);
 
 % Temperature
@@ -76,7 +75,6 @@ for k=1:NT
     R_tot_n(k),eps(k),delta_sei(k),c_ss_n(k),p.Ds_n,D_n...
     ]...
     =ode_spmet_degr_cycle(t(k),x(k,:)',data,p,dUdt,SOC_ent);
-
 end
 
 varargout{1} = U_p;
