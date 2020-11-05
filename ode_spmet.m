@@ -1,4 +1,4 @@
-function [xdot,varargout]=ode_spmet(t,x,data,p,dUdt,SOC_ent)
+function [xdot,varargout]=ode_spmet_degr_cycle(t,x,data,p,dUdt,SOC_ent)
 
 U_n = x(1:(p.Nn-1));
 U_p = x(p.Nn : 2*(p.Nn-1));
@@ -12,7 +12,7 @@ eps=x(end);
 
 cur=interp1(data.time,data.cur,t,[]);
 
-TEMP=T;
+TEMP=p.T_ref;
 %% Solid phase dynamics
 
 % Molar flux for solid phase
@@ -27,8 +27,8 @@ p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/TEMP)) ;
 [A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
 
 % Calculation of the surface concentration
-c_ss_p= C_p*U_p + D_p.*J_p;
-c_ss_n= C_n*U_n + D_n.*J_n;
+c_ss_p= U_p(end) + D_p.*J_p;
+c_ss_n= U_n(end)+ D_n.*J_n;
 
 %% Electrolyte phase dynamics
 % Electrolyte phase diffusivity temperature dependence
@@ -139,7 +139,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      %% Degredation   
      
         % Exchange Current density of SEI 
-        i0_sei_n= -p.Faraday*p.ksei*0.0001;
+        i0_sei_n= -p.Faraday*p.ksei*0.001;
         i0_sei_p= p.Faraday*p.ksei_p;
         
         % Overpotential of the SEI
@@ -155,6 +155,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
         
         % Growth rate of SEI layer
         delta_sei_dot = -p.Msei/(p.Faraday*p.rhos) * Jsei_n;
+        L_sei=p.L_sei + delta_sei;
         
         % Volume fraction
         eps_dot= 7.5e-7*Jsei_n;
@@ -164,7 +165,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
            
         %% Solid particle concentration after SEI layer formation
         c_p = A_p*U_p + B_p.*J_p;
-        c_n = A_n*U_n + B_n.*J_n;        % Write jn interms of J_n to see SEI effect and change the coeff. in line 142 to see the effect.
+        c_n = A_n*U_n + B_n.*jn;        
         
         %% State-of-Charge (Bulk)
         r_vec = (0:1/p.Nn:1)';
@@ -204,5 +205,11 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     varargout{3} = V;
     varargout{4} = V_spm;
     varargout{5} = V_ocv;
+    varargout{6} = R_tot_n;
+    varargout{7} =eps;
+    varargout{8} =delta_sei;
+    varargout{9} =c_ss_n;
+    varargout{10} =p.Ds_n;
+    varargout{11} =D_n;
     
 end
