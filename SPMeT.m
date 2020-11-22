@@ -4,7 +4,8 @@ load('dUdT.mat');
 load('SOC_ent.mat');
 
 %% Finite difference for spherical particle and electrolyte
-
+p.Np=50;
+p.Nn=50;
 
 p.delta_p =  p.R_p/(p.Np);
 p.delta_n =  p.R_n/(p.Nn);  
@@ -20,8 +21,8 @@ p.Del_xp = p.L_p * p.dx_p;
 
 % Initial concentration  of solid particles and electrolyte 
 
-Up0=Upi;             %p.c_s_p_max*p.theta_p_min
-Un0=Uni;             %p.c_s_n_max*p.theta_n_max
+Up0=Upi*ones(p.Np-1,1);             %p.c_s_p_max*p.theta_p_min
+Un0=Uni*ones(p.Nn-1,1);             %p.c_s_n_max*p.theta_n_max
 Ue0=1500.*ones(p.Nx-3,1);
 
 % Temperature
@@ -38,54 +39,30 @@ eps=eps0;                                %0.58
 x0 = [Un0; Up0; Ue0;T10;T20;T0;delta_sei0;eps];
 data.time = t;
 data.cur = I;
-Opt1= odeset('Events', @(t, U_n)ode_cont1(t, U_n,p));
-[t,x] = ode23s(@(t,x) ode_spmet_degr_cycle(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
+Opt1= odeset('Events', @(t, c_n)ode_cont1(t, c_n,p));
+[ts,x] = ode23s(@(t,x) ode_spmet_degr_cycle(t,x,data,p,dUdt,SOC_ent),t,x0,Opt1);
 
-U_n = x(:,1:(p.Nn-1));
-U_p = x(:,p.Nn : 2*(p.Nn-1));
-U_e = x(:,2*p.Nn-1 : 2*p.Nn-1+p.Nx-4);
+c_n = x(:,1:(p.Nn-1));
+c_p = x(:,p.Nn : 2*(p.Nn-1));
+c_e = x(:,2*p.Nn-1 : 2*p.Nn-1+p.Nx-4);
 T1 = x(:,end-4);
 T2 = x(:,end-3);
 T  = x(:,end-2);
 delta_sei= x(:,end-1);
 eps=x(:,end);
 
-%% Calculation of SOC of the cell based on concentrations of the electrodes
-% cn_avg= mean(U_n'); cp_avg= mean(U_p');
-% socn= ( (cn_avg/p.c_s_n_max)-p.theta_n_min ) / (p.theta_n_max-p.theta_n_min);
-% socp= ( (cp_avg/p.c_s_p_max)-p.theta_p_max ) / (p.theta_p_min-p.theta_p_max) ;
-% 
-% % Capacity 
-% capacity_n= (p.Area_n*p.L_n*p.Faraday*p.eps_s_n*p.c_s_n_max*p.theta_n_max)./3600; %Ah
-% capacity_p= (p.Area_p*p.L_p*p.Faraday*p.eps_s_p*p.c_s_p_max*p.theta_p_max)./3600; %Ah
-% capacity=((1:length(t)).*p.cell_Ah)./length(t);
 
-%% Function outputs
-% NT = length(t);
-% theta_p = zeros(NT,1);
-% theta_n = zeros(NT,1);
-% Uref_n  = zeros(NT,1);
-% V       = zeros(NT,1);
-% V_ocv   = zeros(NT,1);
-% V_spm   = zeros(NT,1);
-NT=length(t);
-for k=1:NT
-    
-[~,theta_p(k),theta_n(k),V(k),V_spm(k),V_ocv(k),...
-    R_tot_n(k),eps(k),delta_sei(k),c_ss_n(k),p.Ds_n,D_n...
-    ]...
-    =ode_spmet_degr_cycle(t(k),x(k,:)',data,p,dUdt,SOC_ent);
-end
 
-varargout{1} = U_p;
-varargout{2} = U_n;
+[theta_p,theta_n,V,V_spm,V_ocv,...
+    R_tot_n,eps,delta_sei,c_ss_n]=getvalues_spmet(t,x,data,p,dUdt,SOC_ent);
+
+varargout{1} = c_p;
+varargout{2} = c_n;
 varargout{3} = eps;
 varargout{4} = delta_sei;
 varargout{5} = V;
 varargout{6} = R_tot_n;
 varargout{7} = theta_n;
 varargout{8} = c_ss_n;
-varargout{9} = p.Ds_n;
-varargout{10} = D_n;
-varargout{11} = T;
+varargout{9} = T;
 end
