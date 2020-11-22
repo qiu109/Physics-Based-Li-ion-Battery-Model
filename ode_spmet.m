@@ -12,7 +12,7 @@ eps=x(end);
 
 cur=interp1(data.time,data.cur,t,[]);
 
-TEMP=p.T_ref;
+TEMP=T1;
 %% Solid phase dynamics
 
 % Molar flux for solid phase
@@ -24,11 +24,15 @@ p.Ds_n = p.Ds_n0 * exp(p.E.Dsn/p.R*(1/p.T_ref - 1/TEMP));
 p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/TEMP)) ;
 
 % Matrices for solid-phase Li concentration
-[A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
-
+[A_p,A_n,B_n,B_p,C_p,C_n,D_n,D_p]= matrixs(p);
+% [A_px,A_nx,B_nx,B_px]= matrixs(p);
+ 
 % Calculation of the surface concentration
-c_ss_p= U_p(end) + D_p.*J_p;
-c_ss_n= U_n(end)+ D_n.*J_n;
+% c_ss_p= C_p*U_p + D_p.*J_p;
+% c_ss_n= C_n*U_n + D_n.*J_n;
+
+c_ss_p= U_p(end);
+c_ss_n= U_n(end);
 
 %% Electrolyte phase dynamics
 % Electrolyte phase diffusivity temperature dependence
@@ -177,7 +181,7 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     %% Heat generation  
       Qohmic =  -cur.*(V - V_ocv);
       Qreaction=   cur.*(eta_n - eta_p) ;             
-      Qentropic=  cur*TEMP*(dudT)./1000;       %cur*TEMP*(dUpdT-dUndT)./1000  %cur*TEMP*(dudT)./1000
+      Qentropic=  cur*TEMP*(dUpdT-dUndT)./1000;       %cur*TEMP*(dUpdT-dUndT)./1000  %cur*TEMP*(dudT)./1000
       Qgen= Qohmic + Qreaction + Qentropic;
       
      % Heat remove
@@ -210,6 +214,6 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     varargout{8} =delta_sei;
     varargout{9} =c_ss_n;
     varargout{10} =p.Ds_n;
-    varargout{11} =D_n;
+    varargout{11} =Q_n;
     
 end
