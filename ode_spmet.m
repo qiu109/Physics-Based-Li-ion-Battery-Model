@@ -1,16 +1,18 @@
-function [xdot,varargout]=ode_spmet(t,x,data,p,dUdt,SOC_ent)
+function [xdot,varargout]=ode_spmet_degr_cycle(t,x,data,p,dUdt,SOC_ent)
 
 U_n = x(1:(p.Nn-1));
 U_p = x(p.Nn : 2*(p.Nn-1));
 U_e = x(2*p.Nn-1 : 2*p.Nn-1+p.Nx-4);
-T1 = x(end-4);
-T2 = x(end-3);
-T  = x(end-2);
-delta_sei = x(end-1);
-eps=x(end);
-
+T1 = x(end-5);
+T2 = x(end-4);
+T  = x(end-3);
+delta_sei = x(end-2);
+eps=x(end-1);
+Q_final=x(end);
 
 cur=interp1(data.time,data.cur,t,[]);
+
+
 
 TEMP=T;
 %% Solid phase dynamics
@@ -24,16 +26,24 @@ p.Ds_n = p.Ds_n0 * exp(p.E.Dsn/p.R*(1/p.T_ref - 1/TEMP));
 p.Ds_p = p.Ds_p0 * exp(p.E.Dsp/p.R*(1/p.T_ref - 1/TEMP)) ;
 
 % Matrices for solid-phase Li concentration
-[A_n,A_p,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
-
+ [A_p,A_n,B_n,B_p,C_n,C_p,D_n,D_p]= matrixs(p);
+% [A_p,A_n,B_n,B_p]= matrixs_org(p);
+ 
 % Calculation of the surface concentration
-c_ss_p= C_p*U_p + D_p.*J_p;
-c_ss_n= C_n*U_n + D_n.*J_n;
+c_ss_p1= C_p*U_p + D_p*J_p;
+c_ss_n1= C_n*U_n + D_n*J_n;
+
+c_ss_p= U_p(end);
+c_ss_n= U_n(end);
+
+
+
+socdot_=-0.8*cur/(2.3*3600);
 
 %% Electrolyte phase dynamics
 % Electrolyte phase diffusivity temperature dependence
-p.De_n=p.De0_n*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
-p.De_p=p.De0_p*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
+p.De_n=20e-12*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
+p.De_p=20e-12*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
 p.De_s=p.De0_s*exp(p.E.De/p.R*(1/p.T_ref - 1/TEMP));
 
 p.D_en_eff = p.De_n * p.epsilon_e_n^(p.brug-1);
@@ -68,8 +78,8 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
 %% Calculation of potential of the cell
 
     % SOC of the electrodes  
-     [theta_p,theta_n]=getsoc(c_ss_p,c_ss_n,p);
-     
+     [theta_p,theta_n]=getsoc(c_ss_p,c_ss_n,p,t);
+
     % Solid phase diffusivity concentration dependence  
      p.Ds_pp = 1.18e-18 ./ (1 + theta_p).^1.6 ;
      p.Ds_nn = 2e-14 ./ (1 + theta_n).^1.6 ;
@@ -77,7 +87,8 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
     % OCP of the electrodes
      [Uref_p,dUpdT]=refpotantial_p (theta_p);
      [Uref_n,dUndT]=refpotantial_n (theta_n);
-     dudT= interp1(SOC_ent,dUdt,theta_n,'linear','extrap');
+     
+%dudT= interp1(SOC_ent,dUdt,theta_n,'linear','extrap');
      
     % OCV of the cell
      V_ocv = Uref_p - Uref_n;
@@ -133,50 +144,46 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
          +(1+dfca_p) .* (log(ce0p) - log(cesp)));  
      
              %% Overall cell voltage
-        V = V_spm + V_electrolyteCond + V_electrolytePolar + (p.Rsei_p/(p.a_p*p.L_p) + p.Rsei_n/(p.a_n*p.L_n) )*cur;
+        V = V_spm + V_electrolyteCond + V_electrolytePolar -(p.Rsei_n + delta_sei/p.kappa_s)*cur;
 
 
      %% Degredation   
+    
+    Sn=3*p.eps_s_n*p.L_n*p.Area_n/p.R_n;  %m^2
      
-        % Exchange Current density of SEI 
-        i0_sei_n= -p.Faraday*p.ksei*0.0001;
-        i0_sei_p= p.Faraday*p.ksei_p;
-        
-        % Overpotential of the SEI
-        eta_sei_n= Uref_n + eta_n - p.Us + p.Rsei_n*p.L_sei*cur;
-        eta_sei_p= Uref_p + eta_p - p.Us + p.Rsei_n*p.L_sei*cur;
-        
-        % Current density of the SEI
-        Jsei_n= i0_sei_n.*exp(-p.alphasei_n*p.Faraday/(p.R*TEMP) * eta_sei_n);
-        Jsei_p= i0_sei_p.*exp(p.alphasei_p*p.Faraday/(p.R*TEMP) *eta_sei_p);
+    it=cur/Sn;                            %A/m^2
+    
+    % Overpotential of the SEI
+    eta_sei_n= Uref_n + eta_n + (delta_sei/p.kappa_s)*it;
+    
+    % Current density of the SEI
+    Jsei_n= -p.Faraday*(1.24e-19)*exp(-0.5*p.Faraday/(p.R*TEMP) *( eta_sei_n-(delta_sei/p.kappa_s)*it) );
+    
+    % Growth rate of SEI layer
+    delta_sei_dot = -p.Msei/(2*p.Faraday*p.rhos) * Jsei_n;
+    
+    % Volume fraction
+    eps_dot= 7.5e-7*Jsei_n;
 
-        jn = (abs(J_n) - abs(Jsei_n)) * sign(J_n);
-        jp = (abs(J_p)- abs(Jsei_p)) * sign(J_p);
+    % Total resistance (film + growing SEI layer)
+    R_tot_n = p.Rsei_n + delta_sei/p.kappa_s;
+    
+    jn = (abs(J_n) - abs(Jsei_n)) * sign(J_n);
+    
+    %% Capacity Calculations  
+    
+    Q_dot= Sn*Jsei_n;
+    
+    %% Solid particle concentration after SEI layer formation
+    
+    c_p = A_p*U_p + B_p.*J_p;
+    c_n = A_n*U_n + B_n.*jn;        
         
-        % Growth rate of SEI layer
-        delta_sei_dot = -p.Msei/(p.Faraday*p.rhos) * Jsei_n;
-        
-        % Volume fraction
-        eps_dot= 7.5e-7*Jsei_n;
-        
-        % Total resistance (film + growing SEI layer)
-        R_tot_n = p.Rsei_n + delta_sei/p.kappa_s;
-           
-        %% Solid particle concentration after SEI layer formation
-        c_p = A_p*U_p + B_p.*J_p;
-        c_n = A_n*U_n + B_n.*J_n;        % Write jn interms of J_n to see SEI effect and change the coeff. in line 142 to see the effect.
-        
-        %% State-of-Charge (Bulk)
-        r_vec = (0:1/p.Nn:1)';
-        c_s_n = [U_n(1); U_n; c_ss_n];
-        c_s_p = [U_p(1); U_p; c_ss_p];
-        SOC_n = 3/p.c_s_n_max * trapz(r_vec,r_vec.^2.*c_s_n);
-        SOC_p = 3/p.c_s_p_max * trapz(r_vec,r_vec.^2.*c_s_p);
-        
+    
     %% Heat generation  
       Qohmic =  -cur.*(V - V_ocv);
       Qreaction=   cur.*(eta_n - eta_p) ;             
-      Qentropic=  cur*TEMP*(dudT)./1000;       %cur*TEMP*(dUpdT-dUndT)./1000  %cur*TEMP*(dudT)./1000
+      Qentropic=  cur*TEMP*(dUpdT-dUndT)./1000;       %cur*TEMP*(dUpdT-dUndT)./1000  %cur*TEMP*(dudT)./1000
       Qgen= Qohmic + Qreaction + Qentropic;
       
      % Heat remove
@@ -188,21 +195,22 @@ c_e_bar = [cen_bar; ces_bar; cep_bar];
      
      % Lumped Temperature calculation
      T_dot= (Qgen  - Qremv)./(p.M*p.Cp);
-     
-     
-    %% Capacity Calculations  
-    
-    Q_n= (p.Area_n*p.L_n*p.Faraday*eps*p.c_s_n_max*p.theta_n_max)./3600; %Ah
-    Q_p= (p.Area_p*p.L_p*p.Faraday*p.eps_s_p*p.c_s_p_max*p.theta_p_max)./3600; %Ah
-    
-    
+        
      %% Outputs
-    xdot = [c_n; c_p; c_e; T1_dot; T2_dot; T_dot; delta_sei_dot;eps_dot]; 
+    xdot = [c_n; c_p; c_e; T1_dot; T2_dot; T_dot; delta_sei_dot;eps_dot;Q_dot]; 
 
     varargout{1} = theta_p;
     varargout{2} = theta_n;
     varargout{3} = V;
     varargout{4} = V_spm;
     varargout{5} = V_ocv;
+    varargout{6} = R_tot_n;
+    varargout{7} =eps;
+    varargout{8} =delta_sei;
+    varargout{9} =c_ss_n1;
+    varargout{10}= c_ss_n;
+   
+    
+
     
 end
