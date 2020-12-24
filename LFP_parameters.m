@@ -1,6 +1,6 @@
 %% Capacity
 
-p.cell_Ah=2.3;          %Capacity of the battery
+p.Ah=2.3;          %Capacity of the battery
 
 %% Geometric Params
 % Radius of particles
@@ -42,7 +42,7 @@ p.Ds_p0 = 1.18e-18;  % Diffusion coeff for solid in pos. electrode, [m^2/s]
 p.Ds_n0 = 2e-14;    % Diffusion coeff for solid in neg. electrode, [m^2/s]
 
 p.Faraday = 96485.33289;      % Faraday's constant, [Coulumbs/mol]
-p.t_plus = 0.5;               % Transference number
+p.t_plus = 0.36;               % Transference number
 p.brug = 1.5;                 % Bruggeman porosity
 
 p.De0_s=(9e-15);              % Diffusion coeff for solid in sep, [m^2/s]
@@ -67,7 +67,7 @@ p.c_s_n_max = 31370;    % Max concentration in anode, [mol/m^3]
 p.ce = 1000;            % Fixed electrolyte concentration for SPM, [mol/m^3]
 
 % Stochiometry
-p.theta_n_min=0;              % Min soc of the negative electrode
+p.theta_n_min=0.001;              % Min soc of the negative electrode
 p.theta_n_max=0.8;            % Max soc of the negative electrode
 
 p.theta_p_min=0.03;           % Min soc of the positive electrode
@@ -113,16 +113,16 @@ p.E.kp= 30000;
 %% Aging submodel parameters
 
 p.kappa_s = 5e-6;  %1;     % [S/m] conductivity of side rxn product
-p.ksei= 2.75e-13;    % [m/s^-1] neg.side kinetic rate of side rxn product adopted from Howey
+p.ksei= 2.75e-16;    % [m/s^-1] neg.side kinetic rate of side rxn product adopted from Howey
 p.ksei_n= 4.86e-10;  % [mol/m^2s] Apperant kinetic rate of side rxn product adopted from Safari
 p.ksei_p= 1.24e-19;  % [mol/m^2s] Apperant kinetic rate of side rxn product adopted from Safari
 p.Dsei= 1.125e-14;   % [m^2/s^-1] Diffusion rate of side rxn product adopted from Howey
 p.Msei= 0.162;       % [kg/mol] molecular weight of side rxn product adopted from Delecourt
 p.rhos= 1690;        % [kg/m^3] mass density of side rxn product
-p.Us= 0.4;           % [V] reference potential of side rxn
+p.Us= 0.5;           % [V] reference potential of side rxn
 p.alphasei_n=0.38;    % Charge transfer coeff. of the negative side adopted from Safari
 p.alphasei_p=0.11;   % Charge transfer coeff. of the positive side adopted from Safari
-p.L_sei=1e-9;        % [m^2] Initialt thickness of the SEI layer
+p.L_sei=5e-9;        % [m] Initial thickness of the SEI layer
 p.Rsei_n = 1e-3;      % [Ohms*m^2] Resistivity of SEI layer, 
 p.Rsei_p=0;
 p.R_s_sei = 0;       % [Ohms*m^2] Resistivity of SEI layer, 
